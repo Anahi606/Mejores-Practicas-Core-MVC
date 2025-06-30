@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GlobalStyle from '../styles/GlobalStyle';
 import GameForm from './GameForm';
@@ -8,7 +8,10 @@ import CategoryList from './CategoryList';
 import PageForm from './PageForm';
 import PageList from './PageList';
 import Modal from './Modal';
-import { supabase } from '../supabaseConfig';
+import { useGameService } from '../../hooks/useGameService';
+import { useCategoryService } from '../../hooks/useCategoryService';
+import { usePageService } from '../../hooks/usePageService';
+import { useAuthService } from '../../hooks/useAuthService';
 import styled, { createGlobalStyle } from 'styled-components';
 
 const MainBackground = styled.div`
@@ -100,9 +103,33 @@ const AddButton = styled.button`
 `;
 
 const Games = () => {
-  const [games, setGames] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [pages, setPages] = useState([]);
+
+  const { 
+    games, 
+    loading: gamesLoading, 
+    error: gamesError,
+    deleteGame, 
+    updateGame 
+  } = useGameService();
+  
+  const { 
+    categories, 
+    loading: categoriesLoading, 
+    error: categoriesError,
+    deleteCategory, 
+    updateCategory 
+  } = useCategoryService();
+  
+  const { 
+    pages, 
+    loading: pagesLoading, 
+    error: pagesError,
+    deletePage, 
+    updatePage 
+  } = usePageService();
+
+  const { logout, loading: authLoading, error: authError } = useAuthService();
+
   const [gameToEdit, setGameToEdit] = useState(null);
   const [categoryToEdit, setCategoryToEdit] = useState(null);
   const [pageToEdit, setPageToEdit] = useState(null);
@@ -111,158 +138,94 @@ const Games = () => {
   const [isPageModalOpen, setIsPageModalOpen] = useState(false);
   const navigate = useNavigate();
 
-  const fetchGames = async () => {
-    const { data, error } = await supabase.from('Games').select('*');
-    if (error) {
-      console.error('Error fetching games:', error.message);
-    } else {
-      setGames(data);
-    }
-  };
-
-  const fetchCategories = async () => {
-    const { data, error } = await supabase.from('Category').select('*');
-    if (error) {
-      console.error('Error fetching categories:', error.message);
-    } else {
-      setCategories(data);
-    }
-  };
-
-  const fetchPages = async () => {
-    const { data, error } = await supabase.from('Pages').select('*');
-    if (error) {
-      console.error('Error fetching pages:', error.message);
-    } else {
-      setPages(data);
-    }
-  };
-
-  useEffect(() => {
-    fetchGames();
-    fetchCategories();
-    fetchPages();
-  }, []);
-
-  const handleSaveGame = (game) => {
+  // Game handlers
+  const handleSaveGame = async (game) => {
     if (!game) {
       console.error('Game object is null or undefined');
       return;
     }
 
-    if (gameToEdit) {
-      const updateGame = async () => {
-        const { error } = await supabase
-          .from('Games')
-          .update(game)
-          .eq('id', gameToEdit.id);
-        if (error) {
-          console.error('Error updating game:', error.message);
-        } else {
-          await fetchGames();
-          setGameToEdit(null);
-        }
-      };
-      updateGame();
-    } else {
-      const refetchGame = async () => { await fetchGames(); };
-      refetchGame();
+    try {
+      if (gameToEdit) {
+        await updateGame(gameToEdit.id, game);
+        setGameToEdit(null);
+      }
+      // For new games, the form component handles creation
+    } catch (error) {
+      console.error('Error saving game:', error);
     }
   };
 
-  const handleSaveCategory = (category) => {
+  const handleDeleteGame = async (id) => {
+    try {
+      await deleteGame(id);
+    } catch (error) {
+      console.error('Error deleting game:', error);
+    }
+  };
+
+  const handleEditGame = (id) => {
+    const game = games.find(g => g.id === id);
+    setGameToEdit(game);
+    setIsGameModalOpen(true);
+  };
+
+  const handleSaveCategory = async (category) => {
     if (!category) {
       console.error('Category object is null or undefined');
       return;
     }
 
-    if (categoryToEdit) {
-      const updateCategory = async () => {
-        const { error } = await supabase
-          .from('Category')
-          .update(category)
-          .eq('id', categoryToEdit.id);
-        if (error) {
-          console.error('Error updating category:', error.message);
-        } else {
-          await fetchCategories();
-          setCategoryToEdit(null);
-        }
-      };
-      updateCategory();
-    } else {
-      const refetchCategory = async () => { await fetchCategories(); };
-      refetchCategory();
+    try {
+      if (categoryToEdit) {
+        await updateCategory(categoryToEdit.id, category);
+        setCategoryToEdit(null);
+      }
+    } catch (error) {
+      console.error('Error saving category:', error);
     }
   };
 
-  const handleSavePage = (page) => {
+  const handleDeleteCategory = async (id) => {
+    try {
+      await deleteCategory(id);
+    } catch (error) {
+      console.error('Error deleting category:', error);
+    }
+  };
+
+  const handleEditCategory = (id) => {
+    const category = categories.find(c => c.id === id);
+    setCategoryToEdit(category);
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleSavePage = async (page) => {
     if (!page) {
       console.error('Page object is null or undefined');
       return;
     }
 
-    if (pageToEdit) {
-      const updatePage = async () => {
-        const { error } = await supabase
-          .from('Pages')
-          .update(page)
-          .eq('id', pageToEdit.id);
-        if (error) {
-          console.error('Error updating page:', error.message);
-        } else {
-          await fetchPages();
-          setPageToEdit(null);
-        }
-      };
-      updatePage();
-    } else {
-      const refetchPage = async () => { await fetchPages(); };
-      refetchPage();
-    }
-  };
-
-  const handleDeleteGame = async (id) => {
-    const { error } = await supabase.from('Games').delete().eq('id', id);
-    if (error) {
-      console.error('Error deleting game:', error.message);
-    } else {
-      setGames(games.filter((game) => game.id !== id));
-    }
-  };
-
-  const handleDeleteCategory = async (id) => {
-    const { error } = await supabase.from('Category').delete().eq('id', id);
-    if (error) {
-      console.error('Error deleting category:', error.message);
-    } else {
-      setCategories(categories.filter((category) => category.id !== id));
+    try {
+      if (pageToEdit) {
+        await updatePage(pageToEdit.id, page);
+        setPageToEdit(null);
+      }
+    } catch (error) {
+      console.error('Error saving page:', error);
     }
   };
 
   const handleDeletePage = async (id) => {
-    const { error } = await supabase.from('Pages').delete().eq('id', id);
-    if (error) {
-      console.error('Error deleting page:', error.message);
-    } else {
-      setPages(pages.filter((page) => page.id !== id));
+    try {
+      await deletePage(id);
+    } catch (error) {
+      console.error('Error deleting page:', error);
     }
   };
 
-  const handleEditGame = (id) => {
-    const game = games.find((game) => game.id === id);
-    setGameToEdit(game);
-    setIsGameModalOpen(true);
-  };
-
-  const handleEditCategory = (id) => {
-    const category = categories.find((category) => category.id === id);
-    setCategoryToEdit(category);
-    setIsCategoryModalOpen(true);
-  };
-
   const handleEditPage = (id) => {
-    const page = pages.find((page) => page.id === id);
+    const page = pages.find(p => p.id === id);
     setPageToEdit(page);
     setIsPageModalOpen(true);
   };
@@ -298,66 +261,108 @@ const Games = () => {
   };
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error al intentar salir de cuenta:', error.message);
-    } else {
+    try {
+      await logout();
       navigate('/');
+    } catch (error) {
+      console.error('Error during logout:', error);
     }
   };
+
+  const isLoading = gamesLoading || categoriesLoading || pagesLoading || authLoading;
+
+  if (isLoading) {
+    return (
+      <MainBackground>
+        <GlobalStyle />
+        <div className="loading-container">
+          <div className="loading-spinner">Cargando...</div>
+        </div>
+      </MainBackground>
+    );
+  }
 
   return (
     <MainBackground>
       <GlobalStyle />
       <AdminContainer>
-        <Header>
-          <h1>Administración</h1>
-          <button onClick={handleLogout}>Cerrar sesión</button>
-        </Header>
+        <Section>
+          <Header>
+            <h1>Panel de Administración</h1>
+            <button onClick={handleLogout} disabled={authLoading}>
+              {authLoading ? 'Cerrando...' : 'Cerrar Sesión'}
+            </button>
+          </Header>
+        </Section>
+
         <Section>
           <SectionTitle>Juegos</SectionTitle>
           <AddButton onClick={handleAddGame}>Agregar Juego</AddButton>
-          <GameList games={games} onDelete={handleDeleteGame} onEdit={handleEditGame} />
+          <GameList 
+            games={games} 
+            onDelete={handleDeleteGame} 
+            onEdit={handleEditGame} 
+          />
         </Section>
+
         <FlexRow>
           <FlexCol>
             <Section>
               <SectionTitle>Categorías</SectionTitle>
               <AddButton onClick={handleAddCategory}>Agregar Categoría</AddButton>
-              <CategoryList categories={categories} onDelete={handleDeleteCategory} onEdit={handleEditCategory} />
+              <CategoryList 
+                categories={categories} 
+                onDelete={handleDeleteCategory} 
+                onEdit={handleEditCategory} 
+              />
             </Section>
           </FlexCol>
+
           <FlexCol>
             <Section>
-              <SectionTitle>Páginas Web</SectionTitle>
+              <SectionTitle>Páginas</SectionTitle>
               <AddButton onClick={handleAddPage}>Agregar Página</AddButton>
-              <PageList pages={pages} onDelete={handleDeletePage} onEdit={handleEditPage} />
+              <PageList 
+                pages={pages} 
+                onDelete={handleDeletePage} 
+                onEdit={handleEditPage} 
+              />
             </Section>
           </FlexCol>
         </FlexRow>
-        <Modal isOpen={isGameModalOpen} onClose={handleCloseGameModal}>
-          <GameForm 
-            gameToEdit={gameToEdit} 
-            onSave={handleSaveGame} 
-            onClose={handleCloseGameModal}
-            categories={categories}
-            pages={pages}
-          />
-        </Modal>
-        <Modal isOpen={isCategoryModalOpen} onClose={handleCloseCategoryModal}>
-          <CategoryForm 
-            categoryToEdit={categoryToEdit} 
-            onSave={handleSaveCategory} 
-            onClose={handleCloseCategoryModal}
-          />
-        </Modal>
-        <Modal isOpen={isPageModalOpen} onClose={handleClosePageModal}>
-          <PageForm 
-            pageToEdit={pageToEdit} 
-            onSave={handleSavePage} 
-            onClose={handleClosePageModal}
-          />
-        </Modal>
+
+        {/* Modals */}
+        {isGameModalOpen && (
+          <Modal onClose={handleCloseGameModal}>
+            <GameForm
+              gameToEdit={gameToEdit}
+              onSave={handleSaveGame}
+              onClose={handleCloseGameModal}
+              categories={categories}
+              pages={pages}
+            />
+          </Modal>
+        )}
+
+        {isCategoryModalOpen && (
+          <Modal onClose={handleCloseCategoryModal}>
+            <CategoryForm
+              categoryToEdit={categoryToEdit}
+              onSave={handleSaveCategory}
+              onClose={handleCloseCategoryModal}
+            />
+          </Modal>
+        )}
+
+        {isPageModalOpen && (
+          <Modal onClose={handleClosePageModal}>
+            <PageForm
+              pageToEdit={pageToEdit}
+              onSave={handleSavePage}
+              onClose={handleClosePageModal}
+            />
+          </Modal>
+        )}
       </AdminContainer>
     </MainBackground>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { supabase } from '../supabaseConfig';
+import { useGameService } from '../../hooks/useGameService';
 import PriceTable from './PriceTable';
 import Modal from './Modal';
 
@@ -146,23 +146,21 @@ const GameForm = ({ gameToEdit, onSave, onClose, categories, pages }) => {
   const [error, setError] = useState(null);
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
 
+  const { createGame, getGameWithPrices } = useGameService();
+
   useEffect(() => {
     if (gameToEdit) {
       const fetchPrices = async () => {
-        const { data, error } = await supabase
-          .from('Prices')
-          .select('*, page:Pages(*)')
-          .eq('gameid', gameToEdit.id);
-
-        if (error) {
-          console.error('Error fetching prices:', error.message);
-        } else {
-          setPrices(data);
+        try {
+          const pricesData = await getGameWithPrices(gameToEdit.id);
+          setPrices(pricesData);
+        } catch (error) {
+          console.error('Error fetching prices:', error);
         }
       };
       fetchPrices();
     }
-  }, [gameToEdit]);
+  }, [gameToEdit, getGameWithPrices]);
 
   const resetForm = () => {
     setTitle('');
@@ -175,50 +173,20 @@ const GameForm = ({ gameToEdit, onSave, onClose, categories, pages }) => {
   };
 
   const saveGame = async (newGame) => {
-    let gameId;
-    
-    if (gameToEdit) {
-      const { error } = await supabase
-        .from('Games')
-        .update(newGame)
-        .eq('id', gameToEdit.id);
-      
-      if (error) {
-        console.log(error, "error");
-        setError(error);
-        setIsErrorModalOpen(true);
-        return;
+    try {
+      if (gameToEdit) {
+        onSave(newGame);
+      } else {
+        await createGame(newGame);
+        onSave(newGame);
       }
-      gameId = gameToEdit.id;
-    } else {
-      const { data, error } = await supabase
-        .from('Games')
-        .insert([newGame])
-        .select();
-      
-      if (error) {
-        console.log(error, "error");
-        setError(error);
-        setIsErrorModalOpen(true);
-        return;
-      }
-      gameId = data[0].id;
+      resetForm();
+      onClose();
+    } catch (error) {
+      console.error('Error saving game:', error);
+      setError(error);
+      setIsErrorModalOpen(true);
     }
-
-    const currentPriceIds = prices.map(p => p.id);
-    const { error: deleteError } = await supabase
-      .from('Prices')
-      .delete()
-      .eq('gameid', gameId)
-      .not('id', 'in', `(${currentPriceIds.join(',')})`);
-
-    if (deleteError) {
-      console.error('Error deleting old prices:', deleteError.message);
-    }
-
-    onSave(newGame);
-    resetForm();
-    onClose();
   };
 
   const handleSubmit = (e) => {

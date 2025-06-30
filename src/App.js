@@ -3,9 +3,9 @@ import { useEffect, useState } from 'react';
 import './App.css';
 import Login from './components/crud/Login';
 import Game from './components/crud/Game';
-import { supabase } from './components/supabaseConfig';
 import NotAuthorized from './components/NotAuthorized';
 import GameDetails from './components/GameDetails';
+import { useAuthService } from './hooks/useAuthService';
 
 function AppWrapper() {
   const navigate = useNavigate();
@@ -14,50 +14,45 @@ function AppWrapper() {
   const [userRole, setUserRole] = useState(null);
   const [isGameLoading, setIsGameLoading] = useState(true);
 
+  const { getCurrentUser, getUserRole } = useAuthService();
+
   useEffect(() => {
     const validateSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      const user = data?.session?.user;
+      try {
+        const user = await getCurrentUser();
 
-      if (!user || error) {
-        console.log('No user or error:', error);
+        if (!user) {
+          console.log('No user found');
+          if (location.pathname !== '/') navigate('/');
+          setLoading(false);
+          setIsGameLoading(false);
+          return;
+        }
+
+        const role = await getUserRole(user.id);
+        setUserRole(role);
+
+        if (role === 'user' && location.pathname === '/') {
+          console.log('User role detected, navigating to /userPage');
+          navigate('/userPage');
+        }
+        if (role === 'admin' && location.pathname === '/') {
+          console.log('Admin role detected, navigating to /game');
+          navigate('/game');
+        }
+
+        setLoading(false);
+        setIsGameLoading(false);
+      } catch (error) {
+        console.error('Error validating session:', error);
         if (location.pathname !== '/') navigate('/');
         setLoading(false);
         setIsGameLoading(false);
-        return;
       }
-
-      const { data: roleData, error: roleError } = await supabase
-        .from('Roles')
-        .select('isAdmin')
-        .eq('userid', user.id)
-        .maybeSingle();
-
-      if (roleError) {
-        console.error('Error fetching role:', roleError);
-        setLoading(false);
-        setIsGameLoading(false);
-        return;
-      }
-
-      const role = roleData?.isAdmin ? 'admin' : 'user';
-      setUserRole(role);
-
-      if (role === 'user' && location.pathname == '/') {
-        console.log('User role detected, navigating to /userPage');
-        navigate('/userPage');
-      }
-      if (role === 'admin' && location.pathname == '/') {
-        console.log('Admin role detected, navigating to /game');
-        navigate('/game');
-      }
-
-      setLoading(false);
-      setIsGameLoading(false);
     };
 
     validateSession();
-  }, [navigate, location.pathname]);
+  }, [navigate, location.pathname, getCurrentUser, getUserRole]);
 
   if (loading) return null;
 
