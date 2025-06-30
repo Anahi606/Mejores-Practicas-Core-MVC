@@ -34,7 +34,7 @@ Sigue los pasos a continuación para ejecutar el proyecto localmente:
 2. Navega a la carpeta del proyecto:
    cd SupabaseCRUD
 4. Instala las dependencias:
-   yarn
+   npm install
 5. Solicita las variables de entorno a la autora del proyecto, es decir el archivo .env que deberas poner en la carpeta root del proyecto
    
    ![image](https://github.com/user-attachments/assets/4cbd5079-1189-4d44-b73d-1a478b9a0c23)
