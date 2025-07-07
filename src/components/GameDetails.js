@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseConfig';
+import { RatingService } from '../services/RatingService';
 import styled from 'styled-components';
+
 
 const Container = styled.div`
   max-width: 1000px;
@@ -106,12 +108,20 @@ const GameDetails = () => {
   const [relatedGame, setRelatedGame] = useState(null);
   const [relatedPrice, setRelatedPrice] = useState(null);
   const [showPopup, setShowPopup] = useState(true);
+  const [ratings, setRatings] = useState([]); 
 
   useEffect(() => {
+    console.log("ID revibido desde useParams(): ", id);
     const fetchDetails = async () => {
       const { data: gameData } = await supabase.from('Games').select('*').eq('id', id).single();
       setGame(gameData);
-
+        try {
+          const ratingData = await RatingService.getRatingByGame(parseInt(id));
+          console.log('Ratings data: ', ratingData)
+          setRatings(ratingData);
+        } catch (error) {
+          console.error('Error al obtener ratings:', error.message);
+        }
       const { data: priceData, error } = await supabase
         .from('Prices_by_pages')
         .select('*, Pages(nameWeb, url)')
@@ -140,7 +150,8 @@ const GameDetails = () => {
           }
         }
       }
-    };
+    }
+    ;
 
     fetchDetails();
   }, [id]);
@@ -199,6 +210,37 @@ const GameDetails = () => {
             ))}
           </tbody>
         </PriceTable>
+          <h2>Reseñas del juego</h2>
+          {ratings.length === 0 ? (
+            <p>No hay reseñas aún.</p>
+          ) : (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+              gap: '20px',
+              marginTop: '16px' 
+            }}>
+              {ratings.map((r, idx) => (
+                <div key={idx} style={{
+                  border: '1px solid #ddd',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  backgroundColor: '#fafafa',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+                }}>
+                  <h4 style={{ marginBottom: '8px', color: '#3498db' }}>{r.nombre_organizacion}</h4>
+                  <p style={{ fontWeight: 'bold', marginBottom: '6px' }}>⭐ {r.calificacion}/10</p>
+                  <p style={{ fontStyle: 'italic', color: '#555' }}>"{r.reseña}"</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h3>Datos en bruto (JSON):</h3>
+            <pre style={{ backgroundColor: "#f5f5f5", padding: "10px", borderRadius: "8px", overflowX: "auto" }}>
+              {JSON.stringify(ratings, null, 2)}
+            </pre>
+
 
         <BackButton onClick={() => navigate(-1)}>Volver</BackButton>
       </Container>
