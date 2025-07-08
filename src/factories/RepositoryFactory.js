@@ -15,7 +15,6 @@ export class RepositoryFactory {
         throw new Error(`Unknown repository type: ${type}`);
     }
   }
-
   static createRepositories(types) {
     return types.map(type => this.createRepository(type));
   }

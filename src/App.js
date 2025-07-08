@@ -14,45 +14,37 @@ function AppWrapper() {
   const [userRole, setUserRole] = useState(null);
   const [isGameLoading, setIsGameLoading] = useState(true);
 
+  //Auth service - DIP
   const { getCurrentUser, getUserRole } = useAuthService();
 
   useEffect(() => {
     const validateSession = async () => {
       try {
         const user = await getCurrentUser();
-
         if (!user) {
-          console.log('No user found');
           if (location.pathname !== '/') navigate('/');
           setLoading(false);
           setIsGameLoading(false);
           return;
         }
-
         const role = await getUserRole(user.id);
         setUserRole(role);
-
         if (role === 'user' && location.pathname === '/') {
-          console.log('User role detected, navigating to /userPage');
           navigate('/userPage');
         }
         if (role === 'admin' && location.pathname === '/') {
-          console.log('Admin role detected, navigating to /game');
           navigate('/game');
         }
-
         setLoading(false);
         setIsGameLoading(false);
       } catch (error) {
-        console.error('Error validating session:', error);
         if (location.pathname !== '/') navigate('/');
         setLoading(false);
         setIsGameLoading(false);
       }
     };
-
     validateSession();
-  }, [navigate, location.pathname, getCurrentUser, getUserRole]);
+  }, [navigate, location.pathname]);
 
   if (loading) return null;
 

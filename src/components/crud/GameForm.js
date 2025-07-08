@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { useGameService } from '../../hooks/useGameService';
 import PriceTable from './PriceTable';
 import Modal from './Modal';
 
@@ -146,21 +145,14 @@ const GameForm = ({ gameToEdit, onSave, onClose, categories, pages }) => {
   const [error, setError] = useState(null);
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
 
-  const { createGame, getGameWithPrices } = useGameService();
-
   useEffect(() => {
-    if (gameToEdit) {
-      const fetchPrices = async () => {
-        try {
-          const pricesData = await getGameWithPrices(gameToEdit.id);
-          setPrices(pricesData);
-        } catch (error) {
-          console.error('Error fetching prices:', error);
-        }
-      };
-      fetchPrices();
-    }
-  }, [gameToEdit, getGameWithPrices]);
+    setTitle(gameToEdit ? gameToEdit.title : '');
+    setDescription(gameToEdit ? gameToEdit.description : '');
+    setImageUrl(gameToEdit ? gameToEdit.imageUrl : '');
+    setComments(gameToEdit ? gameToEdit.comments?.join(', ') : '');
+    setRating(gameToEdit ? gameToEdit.rating?.toString() : '');
+    setCategoryId(gameToEdit ? gameToEdit.category_id : '');
+  }, [gameToEdit]);
 
   const resetForm = () => {
     setTitle('');
@@ -170,23 +162,6 @@ const GameForm = ({ gameToEdit, onSave, onClose, categories, pages }) => {
     setRating('');
     setCategoryId('');
     setPrices([]);
-  };
-
-  const saveGame = async (newGame) => {
-    try {
-      if (gameToEdit) {
-        onSave(newGame);
-      } else {
-        await createGame(newGame);
-        onSave(newGame);
-      }
-      resetForm();
-      onClose();
-    } catch (error) {
-      console.error('Error saving game:', error);
-      setError(error);
-      setIsErrorModalOpen(true);
-    }
   };
 
   const handleSubmit = (e) => {
@@ -199,7 +174,14 @@ const GameForm = ({ gameToEdit, onSave, onClose, categories, pages }) => {
       rating: parseFloat(rating),
       category_id: categoryId || null,
     };
-    saveGame(newGame);
+    try {
+      onSave(newGame);
+      resetForm();
+      onClose();
+    } catch (err) {
+      setError(err);
+      setIsErrorModalOpen(true);
+    }
   };
 
   return (
@@ -273,11 +255,10 @@ const GameForm = ({ gameToEdit, onSave, onClose, categories, pages }) => {
           />
         )}
       </FormWrapper>
-
       <Modal isOpen={isErrorModalOpen} onClose={() => setIsErrorModalOpen(false)}>
         <ErrorMessage>
-          <h3>Error {error?.code}</h3>
-          <p>{error?.details || error?.message}</p>
+          <h3>Error</h3>
+          <p>{error?.message}</p>
         </ErrorMessage>
       </Modal>
     </>

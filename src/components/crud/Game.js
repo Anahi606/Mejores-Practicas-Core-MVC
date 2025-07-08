@@ -109,7 +109,8 @@ const Games = () => {
     loading: gamesLoading, 
     error: gamesError,
     deleteGame, 
-    updateGame 
+    updateGame,
+    createGame
   } = useGameService();
   
   const { 
@@ -138,19 +139,19 @@ const Games = () => {
   const [isPageModalOpen, setIsPageModalOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Game handlers
   const handleSaveGame = async (game) => {
     if (!game) {
       console.error('Game object is null or undefined');
       return;
     }
-
     try {
       if (gameToEdit) {
         await updateGame(gameToEdit.id, game);
-        setGameToEdit(null);
+      } else {
+        await createGame(game);
       }
-      // For new games, the form component handles creation
+      setIsGameModalOpen(false);
+      setGameToEdit(null);
     } catch (error) {
       console.error('Error saving game:', error);
     }
@@ -333,7 +334,7 @@ const Games = () => {
 
         {/* Modals */}
         {isGameModalOpen && (
-          <Modal onClose={handleCloseGameModal}>
+          <Modal isOpen={isGameModalOpen} onClose={handleCloseGameModal}>
             <GameForm
               gameToEdit={gameToEdit}
               onSave={handleSaveGame}
@@ -345,7 +346,7 @@ const Games = () => {
         )}
 
         {isCategoryModalOpen && (
-          <Modal onClose={handleCloseCategoryModal}>
+          <Modal isOpen={isCategoryModalOpen} onClose={handleCloseCategoryModal}>
             <CategoryForm
               categoryToEdit={categoryToEdit}
               onSave={handleSaveCategory}
@@ -355,7 +356,7 @@ const Games = () => {
         )}
 
         {isPageModalOpen && (
-          <Modal onClose={handleClosePageModal}>
+          <Modal isOpen={isPageModalOpen} onClose={handleClosePageModal}>
             <PageForm
               pageToEdit={pageToEdit}
               onSave={handleSavePage}
